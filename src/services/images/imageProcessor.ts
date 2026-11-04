@@ -38,12 +38,12 @@ async function processSingleImage(
     throw new Error('Selected photograph has no valid URI.');
   }
 
-  // Create this ID once. All future upload retries
-  // must reuse the same image ID and storage path.
+  // Generate once and reuse for all compression attempts.
   const imageId = String(uuid.v4());
 
   for (const profile of COMPRESSION_PROFILES) {
     let temporaryPath: string | null = null;
+    let permanentPath: string | null = null;
 
     try {
       const resized = await ImageResizer.createResizedImage(
@@ -63,27 +63,31 @@ async function processSingleImage(
 
       temporaryPath = resized.path;
 
-      // Inspect the actual file instead of trusting
-      // the original asset.fileSize or a compression estimate.
+      // Verify the actual compressed file size.
       const processedSize = await getFileSize(temporaryPath);
 
       if (processedSize > MAX_IMAGE_BYTES) {
         continue;
       }
 
+      // Copy the accepted image to permanent storage.
       const saved = await saveImagePermanently(temporaryPath, imageId);
 
-      // Verify the permanent copy independently.
+      permanentPath = saved.localPath;
+
+      // Independently verify the permanent copy.
       if (saved.sizeBytes > MAX_IMAGE_BYTES) {
-        await deleteLocalImage(saved.localPath);
+        await deleteLocalImage(permanentPath);
+        permanentPath = null;
         continue;
       }
 
-      const sha256 = await calculateImageHash(saved.localPath);
+      // Calculate checksum for integrity verification.
+      const sha256 = await calculateImageHash(permanentPath);
 
-      return {
+      const reportImage: ReportImage = {
         id: imageId,
-        localPath: saved.localPath,
+        localPath: permanentPath,
         storagePath: `reports/${reportId}/images/${imageId}.jpg`,
         mimeType: 'image/jpeg',
         sizeBytes: saved.sizeBytes,
@@ -91,11 +95,22 @@ async function processSingleImage(
         status: 'pending',
         uploadedAt: null,
       };
+
+      // Ownership of the permanent file is transferred
+      // to the report. Do not delete it in finally.
+      permanentPath = null;
+
+      return reportImage;
     } finally {
-      // The durable copy is kept. Only the temporary
-      // resized file is removed.
+      // Always remove the temporary compressed file.
       if (temporaryPath) {
         await deleteLocalImage(temporaryPath);
+      }
+
+      // Remove permanent files if processing failed.
+      // Successfully returned files are preserved.
+      if (permanentPath) {
+        await deleteLocalImage(permanentPath);
       }
     }
   }
