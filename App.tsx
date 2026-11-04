@@ -1,85 +1,95 @@
 import React from 'react';
-import { StatusBar, StyleSheet, Text, View } from 'react-native';
+import { StatusBar, Text } from 'react-native';
 
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-function App() {
+import ComposeScreen from './src/screens/ComposeScreen';
+import OutboxScreen from './src/screens/OutboxScreen';
+import ServerReportsScreen from './src/screens/ServerReportsScreen';
+
+import { colors } from './src/theme/colors';
+
+export type MainTabParamList = {
+  Compose: undefined;
+  Outbox: undefined;
+  Server: undefined;
+};
+
+const Tab = createBottomTabNavigator<MainTabParamList>();
+
+const icons = {
+  Compose: '+',
+  Outbox: '↑',
+  Server: '☁',
+};
+
+function AppNavigation() {
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" />
+    <NavigationContainer>
+      <Tab.Navigator
+        initialRouteName="Compose"
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.muted,
 
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          <Text style={styles.brand}>FIELD REPORTING</Text>
+          tabBarLabelStyle: {
+            fontSize: 11,
+            fontWeight: '600',
+          },
 
-          <Text style={styles.title}>Field Reporting App</Text>
+          tabBarStyle: {
+            height: 65,
+            paddingTop: 7,
+            paddingBottom: 7,
+            backgroundColor: colors.surface,
+            borderTopColor: colors.border,
+          },
 
-          <Text style={styles.subtitle}>
-            A simple and reliable way to document inspections and submit
-            photographs.
-          </Text>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Welcome</Text>
-
-            <Text style={styles.cardDescription}>
-              Your reporting workspace is ready. We'll build the report creation
-              and offline upload features here.
+          tabBarIcon: ({ color }) => (
+            <Text
+              style={{
+                color,
+                fontSize: 22,
+                fontWeight: '700',
+              }}
+            >
+              {icons[route.name]}
             </Text>
-          </View>
-        </View>
-      </SafeAreaView>
-    </SafeAreaProvider>
+          ),
+        })}
+      >
+        <Tab.Screen
+          name="Compose"
+          component={ComposeScreen}
+          options={{ tabBarLabel: 'New report' }}
+        />
+
+        <Tab.Screen
+          name="Outbox"
+          component={OutboxScreen}
+          options={{ tabBarLabel: 'Outbox' }}
+        />
+
+        <Tab.Screen
+          name="Server"
+          component={ServerReportsScreen}
+          options={{ tabBarLabel: 'Server' }}
+        />
+      </Tab.Navigator>
+    </NavigationContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  content: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-  },
-  brand: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 2,
-    color: '#3978E8',
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: '700',
-    color: '#172033',
-  },
-  subtitle: {
-    fontSize: 15,
-    lineHeight: 23,
-    color: '#64748B',
-    marginTop: 10,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 22,
-    marginTop: 30,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  cardTitle: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: '#172033',
-  },
-  cardDescription: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#64748B',
-    marginTop: 8,
-  },
-});
-
-export default App;
+export default function App() {
+  return (
+    <SafeAreaProvider
+      style={{ flex: 1, backgroundColor: colors.background, marginBottom: 50 }}
+    >
+      <StatusBar barStyle="dark-content" />
+      <AppNavigation />
+    </SafeAreaProvider>
+  );
+}
