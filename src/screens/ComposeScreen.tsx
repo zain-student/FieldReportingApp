@@ -12,7 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-
+import { createLocalReport } from '../features/reports/reportService';
 import {
   Asset,
   ImagePickerResponse,
@@ -32,7 +32,11 @@ type PhotoAsset = Asset & {
 export default function ComposeScreen() {
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<PhotoAsset[]>([]);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState<{
+    completed: number;
+    total: number;
+  } | null>(null);
   const handlePickerResponse = (response: ImagePickerResponse) => {
     if (response.didCancel) {
       return;
@@ -139,21 +143,63 @@ export default function ComposeScreen() {
     setPhotos(current => current.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     if (!description.trim()) {
-      Alert.alert('Description required');
+      Alert.alert('Description required', 'Enter a report description.');
       return;
     }
 
-    if (photos.length === 0) {
-      Alert.alert('Please attach at least one photograph.');
+    if (photos.length < 1 || photos.length > 5) {
+      Alert.alert('Invalid photographs', 'Select between 1 and 5 photographs.');
       return;
     }
 
-    Alert.alert(
-      'Not connected yet',
-      'The local persistence service will be connected in the next implementation milestone. Nothing has been saved or uploaded.',
-    );
+    try {
+      setIsSubmitting(true);
+
+      setProcessingProgress({
+        completed: 0,
+        total: photos.length,
+      });
+
+      const report = await createLocalReport(
+        {
+          description,
+          images: photos,
+        },
+        progress => {
+          setProcessingProgress(progress);
+        },
+      );
+
+      Alert.alert(
+        'Saved on this device',
+        `Your report was saved successfully.\n\n` +
+          `Photographs: ${report.images.length}\n\n` +
+          'It has NOT been uploaded to the server yet.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setDescription('');
+              setPhotos([]);
+            },
+          },
+        ],
+      );
+    } catch (error) {
+      Alert.alert(
+        'Report not saved',
+        error instanceof Error ? error.message : 'Unable to save your report.',
+      );
+    } finally {
+      setIsSubmitting(false);
+      setProcessingProgress(null);
+    }
   };
 
   return (
@@ -206,7 +252,7 @@ export default function ComposeScreen() {
             <Pressable
               style={styles.primaryButton}
               onPress={takePhoto}
-              disabled={photos.length >= MAX_PHOTOS}
+              disabled={isSubmitting || photos.length >= MAX_PHOTOS}
             >
               <Text style={styles.primaryButtonText}>Take photo</Text>
             </Pressable>
@@ -214,7 +260,7 @@ export default function ComposeScreen() {
             <Pressable
               style={styles.secondaryButton}
               onPress={selectFromGallery}
-              disabled={photos.length >= MAX_PHOTOS}
+              disabled={isSubmitting || photos.length >= MAX_PHOTOS}
             >
               <Text style={styles.secondaryButtonText}>Choose gallery</Text>
             </Pressable>
@@ -248,10 +294,21 @@ export default function ComposeScreen() {
           )}
         </View>
 
-        <Pressable style={styles.submitButton} onPress={handleSubmit}>
-          <Text style={styles.submitButtonText}>Submit report</Text>
+        <Pressable
+          style={styles.submitButton}
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+        >
+          <Text style={styles.submitButtonText}>
+            {isSubmitting ? 'Preparing report...' : 'Submit report'}
+          </Text>
         </Pressable>
-
+        {isSubmitting && processingProgress && (
+          <Text style={styles.footerNote}>
+            Processing photographs: {processingProgress.completed} of{' '}
+            {processingProgress.total}
+          </Text>
+        )}
         <Text style={styles.footerNote}>
           Reports will be saved locally before uploading.
         </Text>
