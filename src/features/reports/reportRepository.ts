@@ -1,5 +1,5 @@
 import { appStorage } from '../../storage/mmkv';
-
+import { DeviceEventEmitter } from 'react-native';
 import { MAX_IMAGE_BYTES, MAX_REPORT_IMAGES, ReportRecord } from './types';
 
 const REPORT_KEY_PREFIX = 'report:v1:';
@@ -68,6 +68,7 @@ export function saveReport(report: ReportRecord): void {
 
   // Synchronous persistent write.
   appStorage.set(key, JSON.stringify(report));
+  DeviceEventEmitter.emit('reportsUpdated');
 }
 
 /**
@@ -127,7 +128,7 @@ export function updateReport(
   }
 
   appStorage.set(getReportKey(reportId), JSON.stringify(updated));
-
+  DeviceEventEmitter.emit('reportsUpdated');
   return updated;
 }
 

@@ -1,5 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  DeviceEventEmitter,
   FlatList,
   Image,
   Modal,
@@ -61,7 +62,16 @@ export default function OutboxScreen() {
   const loadReports = useCallback(() => {
     try {
       const storedReports = getAllReports();
+
       setReports(storedReports);
+
+      // Keep the open report details updated too.
+      setSelectedReport(current => {
+        if (!current) return null;
+
+        return storedReports.find(report => report.id === current.id) ?? null;
+      });
+
       setError(null);
     } catch (err) {
       setError(
@@ -69,13 +79,22 @@ export default function OutboxScreen() {
       );
     }
   }, []);
-
   // Reload reports whenever the user opens the Outbox tab.
   useFocusEffect(
     useCallback(() => {
       loadReports();
     }, [loadReports]),
   );
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener(
+      'reportsUpdated',
+      loadReports,
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, [loadReports]);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);

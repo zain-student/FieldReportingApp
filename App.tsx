@@ -18,6 +18,11 @@ import ServerReportsScreen from './src/screens/ServerReportsScreen';
 import { colors } from './src/theme/colors';
 import { ensureAnonymousSession } from './src/services/authService';
 
+import {
+  startSyncManager,
+  stopSyncManager,
+} from './src/features/reports/syncManager';
+
 export type MainTabParamList = {
   Compose: undefined;
   Outbox: undefined;
@@ -116,6 +121,19 @@ function AuthGate() {
   useEffect(() => {
     initializeAuth();
   }, []);
+
+  // Start automatic synchronization after authentication succeeds.
+  useEffect(() => {
+    if (loading || authError) {
+      return;
+    }
+
+    startSyncManager();
+
+    return () => {
+      stopSyncManager();
+    };
+  }, [loading, authError]);
 
   if (loading) {
     return (

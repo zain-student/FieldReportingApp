@@ -21,7 +21,7 @@ export default function ServerReportsScreen() {
           <Text style={styles.emptyTitle}>Backend not connected</Text>
 
           <Text style={styles.subtitle}>
-            Once Firebase Emulator is connected, reports fetched directly from
+            Once Supabase Emulator is connected, reports fetched directly from
             the server will appear here.
           </Text>
         </View>

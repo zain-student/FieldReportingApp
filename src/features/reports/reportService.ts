@@ -1,6 +1,6 @@
 import uuid from 'react-native-uuid';
 import type { Asset } from 'react-native-image-picker';
-
+import { requestSync } from './syncManager';
 import type { ReportRecord } from './types';
 
 import { processReportImages } from '../../services/images/imageProcessor';
@@ -56,6 +56,9 @@ export async function createLocalReport(
   try {
     // This synchronous write is the local submission boundary.
     saveReport(report);
+
+    // Trigger automatic synchronization after local saving.
+    requestSync();
 
     return report;
   } catch (error) {
