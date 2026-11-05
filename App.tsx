@@ -1,5 +1,11 @@
-import React from 'react';
-import { StatusBar, Text } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  StatusBar,
+  Text,
+  View,
+} from 'react-native';
 
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -10,6 +16,7 @@ import OutboxScreen from './src/screens/OutboxScreen';
 import ServerReportsScreen from './src/screens/ServerReportsScreen';
 
 import { colors } from './src/theme/colors';
+import { ensureAnonymousSession } from './src/services/authService';
 
 export type MainTabParamList = {
   Compose: undefined;
@@ -83,13 +90,94 @@ function AppNavigation() {
   );
 }
 
+function AuthGate() {
+  const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const initializeAuth = async () => {
+    try {
+      setLoading(true);
+      setAuthError(null);
+
+      await ensureAnonymousSession();
+    } catch (error) {
+      console.error('Authentication error:', error);
+
+      setAuthError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to connect to Supabase.',
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    initializeAuth();
+  }, []);
+
+  if (loading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.background,
+        }}
+      >
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ marginTop: 12, color: colors.muted }}>
+          Connecting to server...
+        </Text>
+      </View>
+    );
+  }
+
+  if (authError) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 24,
+          backgroundColor: colors.background,
+        }}
+      >
+        <Text style={{ color: 'red', textAlign: 'center' }}>{authError}</Text>
+
+        <Pressable
+          onPress={initializeAuth}
+          style={{
+            marginTop: 20,
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            backgroundColor: colors.primary,
+            borderRadius: 8,
+          }}
+        >
+          <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Try Again</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return <AppNavigation />;
+}
+
 export default function App() {
   return (
     <SafeAreaProvider
-      style={{ flex: 1, backgroundColor: colors.background, marginBottom: 50 }}
+      style={{
+        flex: 1,
+        backgroundColor: colors.background,
+        marginBottom: 50,
+      }}
     >
       <StatusBar barStyle="dark-content" />
-      <AppNavigation />
+      <AuthGate />
     </SafeAreaProvider>
   );
 }
